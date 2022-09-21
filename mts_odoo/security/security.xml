@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <data noupdate="1">
+        <record id="mts_running_conf_no_delete" model="ir.rule">
+            <field name="name">MTS Confs Running no delete</field>
+            <field name="model_id" ref="model_mts_configuration"/>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="domain_force">['|',('job_status', '=', 'running'),('job_status', '=', 'started')]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        <record id="mts_not_running_conf_delete" model="ir.rule">
+            <field name="name">MTS Confs Not running delete</field>
+            <field name="model_id" ref="model_mts_configuration"/>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="domain_force">[('job_status', '!=', 'running'),('job_status', '!=', 'started')]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+    </data>
+</odoo>

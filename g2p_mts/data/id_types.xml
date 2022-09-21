@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <data>
+        <record id="g2p_reg_id_mosip_vid" model="g2p.id.type">
+            <field name="name">MOSIP VID</field>
+        </record>
+        <record id="g2p_reg_id_mosip_uin_token" model="g2p.id.type">
+            <field name="name">MOSIP UIN TOKEN</field>
+        </record>
+    </data>
+</odoo>

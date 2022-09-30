@@ -23,7 +23,8 @@ class G2PMTSConfiguration(models.Model):
             'given_name',
             'family_name',
             'birthdate',
-            'gender'
+            'gender',
+            'address'
         ]
         record_set = self.env['res.partner'].search(search_domain, limit=100)
         if len(record_set)>0:
@@ -33,7 +34,10 @@ class G2PMTSConfiguration(models.Model):
                     if reg_id.id_type.name == 'MOSIP VID':
                         record_list[i]['vid'] = reg_id.value
                         break
-                record_list[i]['phoneNumber'] = rec.phone_number_ids[0].phone_no
+                if len(rec.phone_number_ids)>0:
+                    record_list[i]['phoneNumber'] = rec.phone_number_ids[0].phone_no 
+                if rec.email:
+                    record_list[i]['email'] = rec.email
             record_list = json.loads(json.dumps(record_list, default=self.record_set_json_serialize))
             _logger.info('The recordset for debug %s', json.dumps(record_list))
             dt_utc = datetime.utcnow()

@@ -94,9 +94,7 @@
                     </group>
                     <group string="ODK Input Configuration" attrs="{'invisible':[('input_type','!=','odk')]}">
                         <field name="odk_base_url" attrs="{'required':[('input_type','==','odk')]}"/>
-                        <field name="odk_version" attrs="{'required':[('input_type','==','odk')]}"/>
-                        <field name="odk_project_id" attrs="{'required':[('input_type','==','odk')]}"/>
-                        <field name="odk_form_id" attrs="{'required':[('input_type','==','odk')]}"/>
+                        <field name="odk_odata_url" attrs="{'required':[('input_type','==','odk')]}"/>
                         <field name="odk_email" attrs="{'required':[('input_type','==','odk')]}"/>
                         <field name="odk_password" password="True" attrs="{'required':[('input_type','==','odk')]}"/>
                     </group>

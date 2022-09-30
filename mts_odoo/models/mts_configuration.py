@@ -1,7 +1,7 @@
 import logging
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
@@ -33,16 +33,14 @@ class MTSConfiguration(models.Model):
 
     # odk configurations
     odk_base_url = fields.Char(string='ODK Base Url', required=False)
-    odk_version = fields.Char(string='ODK Url Version', required=False, default='v1')
-    odk_project_id = fields.Char(string='ODK Project Id', required=False)
-    odk_form_id = fields.Char(string='ODK form id', required=False)
+    odk_odata_url = fields.Char(string='ODK ODATA Url', required=False)
     odk_email = fields.Char(string='ODK User email', required=False)
     odk_password = fields.Char(string='ODK User password', required=False)
 
     # callback configurations
     callback_url = fields.Char(string='Callback URL', required=False)
     callback_httpmethod = fields.Selection([('POST', 'POST'), ('PUT','PUT'), ('GET', 'GET')],string='Callback HTTP Method', required=False)
-    callback_timeout = fields.Integer(string='Callback Timeout', required=False)
+    callback_timeout = fields.Integer(string='Callback Timeout', required=False, default=10)
     callback_authtype = fields.Selection([('odoo','Odoo')],string='Callback Auth Type', required=False)
     callback_auth_url = fields.Char(string='Callback Auth Url', required=False)
     callback_database = fields.Char(string='Callback Auth Database', required=False)
@@ -98,6 +96,11 @@ class MTSConfiguration(models.Model):
                         'numbercall':-1
                     })
                     rec.job_status = 'running'
+                    now_datetime = datetime.now()
+                    rec.update({
+                        'start_datetime': now_datetime-timedelta(minutes=rec.interval_minutes),
+                        'end_datetime': now_datetime,
+                    })
                 elif rec.is_recurring == 'onetime':
                     self.with_delay().mts_onetime_action(rec.id)
                     _logger.info('Initialized one time ' + str(rec.id))
@@ -112,39 +115,60 @@ class MTSConfiguration(models.Model):
         _logger.info('Being called everytime. Id: ' + str(id))
         current_conf = self.env['mts.configuration'].browse(id)
         # execute here
-        if current_conf.input_type=='custom':
-            current_conf.custom_single_action()
-            return
-        dt_utc = datetime.utcnow()
+        dt_now = datetime.utcnow()
         mts_request = {
             "id": "string",
             "version": "string",
             "metadata": "string",
-            "requesttime": dt_utc.strftime('%Y-%m-%dT%H:%M:%S') + dt_utc.strftime('.%f')[0:4] + 'Z',
+            "requesttime": self.datetime_to_iso(dt_now),
             "request": {
                 "output": current_conf.output_type,
                 "deliverytype": current_conf.delivery_type,
                 "mapping": json.loads(current_conf.mapping),
                 "lang": current_conf.lang_code,
-                "outputFormat": current_conf.output_format,
-                "callbackProperties": {
-                    "url": current_conf.callback_url,
-                    "httpMethod": current_conf.callback_httpmethod,
-                    "timeoutSeconds": current_conf.callback_timeout,
-                    "callInBulk": False,
-                    "authType": current_conf.callback_authtype,
-                    "database": current_conf.callback_database,
-                    "odooAuthUrl": current_conf.callback_auth_url,
-                    "username": current_conf.callback_username,
-                    "password": current_conf.callback_password,
-                }
+                "outputFormat": current_conf.output_format
             }
         }
+        if current_conf.input_type=='custom':
+            current_conf.custom_single_action()
+            return
+        if current_conf.input_type == 'odk':
+            mts_request["request"]["odkconfig"] = {
+                "baseurl": current_conf.odk_base_url,
+                "odataurl": current_conf.odk_odata_url,
+                "projectid": "",
+                "formid": "",
+                "email": current_conf.odk_email,
+                "password": current_conf.odk_password,
+                "startdate": self.datetime_to_iso(current_conf.end_datetime),
+                "enddate": self.datetime_to_iso(dt_now)
+            }
+        if current_conf.delivery_type == 'callback':
+            mts_request["request"]["callbackProperties"] = {
+                "url": current_conf.callback_url,
+                "httpMethod": current_conf.callback_httpmethod,
+                "timeoutSeconds": current_conf.callback_timeout,
+                "callInBulk": False,
+                "authType": current_conf.callback_authtype,
+                "database": current_conf.callback_database,
+                "odooAuthUrl": current_conf.callback_auth_url,
+                "username": current_conf.callback_username,
+                "password": current_conf.callback_password,
+            }
+        _logger.info('Request to MTS %s', json.dumps(mts_request))
         mts_res = requests.post('%s/authtoken/%s' % (current_conf.mts_url,current_conf.input_type), json=mts_request)
         _logger.info('Output of MTS %s', mts_res.text)
+        current_conf.update({
+            'start_datetime': current_conf.end_datetime,
+            'end_datetime': dt_now
+        })
         if current_conf.is_recurring == 'onetime':
             current_conf.job_status = 'completed'
 
     def custom_single_action(self):
         # to be overloaded by other modules.
         _logger.info("Custom Single Action Called")
+
+    @classmethod
+    def datetime_to_iso(cls, dt : datetime):
+        return dt.strftime('%Y-%m-%dT%H:%M:%S') + dt.strftime('.%f')[0:4] + 'Z'
